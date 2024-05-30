@@ -7,16 +7,13 @@ class ChatsController < ApplicationController
     end
     
     def create
-        chat = @application.chats.new(number: chat_number)
-        chat_number = @application.chats_count + 1
-    
-        if chat.save
-          @application.increment!(:chats_count)
-          create_response chat
-        else
-          render json: chat.errors, status: :unprocessable_entity
-        end
-      end
+        chat_number = $redis.incr("application:#{@application.id}:chats_count")
+        ChatCreationWorker.perform_async(@application.token, chat_number)
+        render json: { chat_number: chat_number }, status: :accepted
+    rescue StandardError => e
+      $redis.decr("application:#{@application.id}:chats_count")
+      raise e
+    end
     
       def show
         chat = @application.chats.find_by!(number: params[:number])

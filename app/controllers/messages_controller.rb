@@ -8,16 +8,14 @@ class MessagesController < ApplicationController
     end
 
     def create
-        message = @chat.messages.new(number: message_number, body: message_params[:body])
-        message_number = @chat.messages_count + 1
-        
-    
-        if message.save
-          @chat.increment!(:messages_count)
-          create_response message
-        else
-          render json: message.errors, status: :unprocessable_entity
-        end
+        message_params = params.require(:message).permit(:body).to_h
+        message_json = message_params.to_json
+        message_number = $redis.incr("chat:#{@chat.id}:messages_count")
+        MessageCreationWorker.perform_async(@application.token, @chat.number, message_number, message_json)
+        render json: { message_number: message_number }, status: :accepted
+      rescue StandardError => e
+        $redis.decr("chat:#{@chat.id}:messages_count")
+        raise e
       end
     
       def show
@@ -47,8 +45,8 @@ class MessagesController < ApplicationController
       private
 
       def set_chat
-        application = Application.find_by!(token: params[:application_token])
-        @chat = application.chats.find_by!(number: params[:chat_number])
+        @application = Application.find_by!(token: params[:application_token])
+        @chat = @application.chats.find_by!(number: params[:chat_number])
       end
     
       def message_params
