@@ -34,7 +34,7 @@ class ChatsController < ApplicationController
 
       def index
         chats = @application.chats
-        render json: chats
+        create_response chats
       end
 
       private

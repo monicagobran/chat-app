@@ -26,12 +26,8 @@ class MessagesController < ApplicationController
       end
 
       def search
-        if @chat
           results = Message.search(params[:query], @chat.id)
           create_response results.records
-        else
-          render json: { error: 'Chat not found' }, status: :not_found
-        end
       end
 
       def update

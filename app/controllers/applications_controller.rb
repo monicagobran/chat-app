@@ -15,12 +15,12 @@ class ApplicationsController < ApplicationController
       end
     
       def show
-        application = Application.find_by(token: params[:token])
+        application = Application.find_by!(token: params[:token])
         create_response application
       end
     
       def update
-        application = Application.find_by(token: params[:token])
+        application = Application.find_by!(token: params[:token])
         if application.update(application_params)
           create_response application
         else
