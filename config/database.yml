@@ -4,8 +4,13 @@ default: &default
   timeout: 5000
   username: <%= ENV['DB_USER'] %>
   password: <%= ENV['DB_PASSWORD'] %>
-  host: localhost
+  host: <%= ENV['DB_HOST'] %>
+  port: <%= ENV['DB_PORT'] %>
 
 development:
   <<: *default
   database: chat_app_dev
+
+production:
+  <<: *default
+  database: chat_app

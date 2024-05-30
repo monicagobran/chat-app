@@ -1,0 +1,82 @@
+services:
+  elasticsearch:
+    container_name: elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.1
+    environment:
+      - discovery.type=single-node
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+
+  app:
+    container_name: rails-app
+    command: >
+      bash -c "./bin/rails db:create && ./bin/rails db:migrate && ./bin/rails server -b 0.0.0.0"
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      elasticsearch:
+        condition: service_started
+    environment:
+      DB_USER: root
+      DB_PASSWORD: root
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      DB_HOST: mysql
+      DB_PORT: 3306
+      REDIS_URL: redis://redis:6379/0
+
+  mysql:
+    container_name: mysql
+    image: mysql:8
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: chat_app_dev
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: mysqladmin ping -h 127.0.0.1
+      start_period: 20s
+      interval: 5s
+      timeout: 5s
+      retries: 55
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  redis:
+    container_name: redis
+    image: redis:7.0-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  sidekiq:
+    container_name: sidekiq
+    build: .
+    command: bundle exec sidekiq
+    depends_on:
+      - mysql
+      - redis
+      - elasticsearch
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_HOST: mysql
+      DB_NAME: chat_app_dev
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_HOST: mysql
+
+volumes:
+  mysql_data:
+  elasticsearch_data:
+  redis_data:
+  .:
